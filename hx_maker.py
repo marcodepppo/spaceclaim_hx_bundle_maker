@@ -7,7 +7,8 @@ import sys
 
 #parameters
 
-Ntubes = 8466
+#Ntubes = 8466
+Ntubes = 10
 OD = 9.58 #mm
 tubeTks = 0.89 #mm 
 straightLen = 2700 #mm
@@ -110,7 +111,7 @@ dy = (pitch*0.001) * math.sin(math.radians(30))
 print(dy)
 iCounter = 0
 jCounter = 0
-for i in range(2/2):
+for i in range(Ntubes/2):
     yCoord = jCounter * dy + (centerPlaneDist *0.001)
     if jCounter % 2 == 0:
         xCoord = iCounter * dx + dx/2
@@ -180,65 +181,71 @@ for i in range(2/2):
     extrudedBody = resultSweep.GetCreated[IDesignBody]()[0]
     extrudedBodyInner = resultSweepInner.GetCreated[IDesignBody]()[0]
     pierce_base(baseBody, extrudedBodyInner)
-    
     pierce_base(baseBody, extrudedBody)
+    
     # remove intersection
     remove_pipe_intersection(extrudedBody, extrudedBodyInner)
-    #ComponentHelper.MoveBodiesToComponent(selCyl,  newComp, False)
+    selExtrudedBody = Selection.Create(extrudedBody)
+    selExtrudedBodyInner = Selection.Create(extrudedBodyInner)
+    ComponentHelper.MoveBodiesToComponent(selExtrudedBody,  compPipes, False)
+    ComponentHelper.MoveBodiesToComponent(selExtrudedBodyInner,  compWater, False)
     
     
-    ###### MIRROR ######
-   # #define points coordinates Mirror
-   # startCoordsMirror = [baseCenter.X, baseCenter.Y + yCoord, baseCenter.Z - xCoordMirror]
-   # endCoordsMirror = [baseCenter.X - (straightLen*0.001), baseCenter.Y + yCoord, baseCenter.Z - xCoordMirror]
-   # centerTorusCoordsMirror = [baseCenter.X - (straightLen*0.001) - yCoord, baseCenter.Y , baseCenter.Z - xCoordMirror]
-   # endCoords2Mirror = [baseCenter.X - (straightLen*0.001), baseCenter.Y - yCoord, baseCenter.Z - xCoordMirror]
-   # startCoords2Mirror = [baseCenter.X, baseCenter.Y - yCoord, baseCenter.Z - xCoordMirror]
-   # 
-   # #define points Mirror
-   # startPointMirror = Point.Create(*startCoordsMirror)
-   # endPointMirror = Point.Create(*endCoordsMirror)
-   # centerTorusPointMirror = Point.Create(*centerTorusCoordsMirror)
-   # startPoint2Mirror = Point.Create(*startCoords2Mirror)
-   # endPoint2Mirror = Point.Create(*endCoords2Mirror)
-   # 
-   # #define lines Mirror
-   # resultLine1Mirror = SketchLine.Create(startPointMirror, endPointMirror)
-   # resultLine2Mirror = SketchLine.Create(startPoint2Mirror, endPoint2Mirror)
-   # senseClockWise = True
-   # resultTorusLineMirror = SketchArc.Create3PointArc(endPoint2Mirror, endPointMirror,centerTorusPointMirror)
-   # 
-   # #create circles Mirror
-   # resultCircleLargeMirror = SketchCircle.Create(startPointMirror,(OD*0.001/2), sectionPlane) 
-   # resultCircleInnerMirror = SketchCircle.Create(startPointMirror,(OD*0.001/2 - tubeTks*0.001), sectionPlane) 
-   # 
-   # #fill circles Mirror
-   # planeSelMirror = Selection.Create(resultCircleLargeMirror.GetCreated[IDesignCurve]())
-   # planeSelInnerMirror = Selection.Create(resultCircleInnerMirror.GetCreated[IDesignCurve]())
-   # secondarySelection = Selection.Empty()
-   # options = FillOptions()
-   # resultCircleSurfMirror = Fill.Execute(planeSelMirror, secondarySelection, options, FillMode.ThreeD, None)
-   # resultInnerCircleSurfMirror = Fill.Execute(planeSelInnerMirror, secondarySelection, options, FillMode.ThreeD, None)
-   # Delete.Execute(planeSelMirror)
-   # Delete.Execute(planeSelInnerMirror)
-   # 
-   # #extrude circles Mirror
-   # faceSelMirror = Selection.Create(resultCircleSurfMirror.GetCreated[IDesignFace]())
-   # faceSelInnerMirror = Selection.Create(resultInnerCircleSurfMirror.GetCreated[IDesignFace]())
-   # trajectoriesMirror = Selection.Create(resultLine1Mirror.GetCreated[IDesignCurve]()[0],resultLine2Mirror.GetCreated[IDesignCurve]()[0],resultTorusLineMirror.GetCreated[IDesignCurve]()[0])
-   # options = SweepCommandOptions()
-   # options.ExtrudeType = ExtrudeType.ForceIndependent
-   # options.Select = True
-   # resultSweepMirror = Sweep.Execute(faceSelMirror, trajectoriesMirror, options, None)
-   # resultSweepInnerMirror = Sweep.Execute(faceSelInnerMirror, trajectoriesMirror, options, None)
-   # Delete.Execute(trajectoriesMirror)
-   # 
-   # extrudedBodyMirror = resultSweepMirror.GetCreated[IDesignBody]()[0]
-   # extrudedBodyInnerMirror = resultSweepInnerMirror.GetCreated[IDesignBody]()[0]
-   # pierce_base(baseBody, extrudedBodyInnerMirror)
-   # pierce_base(baseBody, extrudedBodyMirror)
-   # # remove intersection
-   # 
-   # 
-   # remove_pipe_intersection(extrudedBodyMirror, extrudedBodyInnerMirror)
+   ###### MIRROR ######
+   #define points coordinates Mirror
+    startCoordsMirror = [baseCenter.X, baseCenter.Y + yCoord, baseCenter.Z - xCoordMirror]
+    endCoordsMirror = [baseCenter.X - (straightLen*0.001), baseCenter.Y + yCoord, baseCenter.Z - xCoordMirror]
+    centerTorusCoordsMirror = [baseCenter.X - (straightLen*0.001) - yCoord, baseCenter.Y , baseCenter.Z - xCoordMirror]
+    endCoords2Mirror = [baseCenter.X - (straightLen*0.001), baseCenter.Y - yCoord, baseCenter.Z - xCoordMirror]
+    startCoords2Mirror = [baseCenter.X, baseCenter.Y - yCoord, baseCenter.Z - xCoordMirror]
+   
+   #define points Mirror
+    startPointMirror = Point.Create(*startCoordsMirror)
+    endPointMirror = Point.Create(*endCoordsMirror)
+    centerTorusPointMirror = Point.Create(*centerTorusCoordsMirror)
+    startPoint2Mirror = Point.Create(*startCoords2Mirror)
+    endPoint2Mirror = Point.Create(*endCoords2Mirror)
+   
+   #define lines Mirror
+    resultLine1Mirror = SketchLine.Create(startPointMirror, endPointMirror)
+    resultLine2Mirror = SketchLine.Create(startPoint2Mirror, endPoint2Mirror)
+    senseClockWise = True
+    resultTorusLineMirror = SketchArc.Create3PointArc(endPoint2Mirror, endPointMirror,centerTorusPointMirror)
+   
+   #create circles Mirror
+    resultCircleLargeMirror = SketchCircle.Create(startPointMirror,(OD*0.001/2), sectionPlane) 
+    resultCircleInnerMirror = SketchCircle.Create(startPointMirror,(OD*0.001/2 - tubeTks*0.001), sectionPlane) 
+   
+   #fill circles Mirror
+    planeSelMirror = Selection.Create(resultCircleLargeMirror.GetCreated[IDesignCurve]())
+    planeSelInnerMirror = Selection.Create(resultCircleInnerMirror.GetCreated[IDesignCurve]())
+    secondarySelection = Selection.Empty()
+    options = FillOptions()
+    resultCircleSurfMirror = Fill.Execute(planeSelMirror, secondarySelection, options, FillMode.ThreeD, None)
+    resultInnerCircleSurfMirror = Fill.Execute(planeSelInnerMirror, secondarySelection, options, FillMode.ThreeD, None)
+    Delete.Execute(planeSelMirror)
+    Delete.Execute(planeSelInnerMirror)
+   
+   #extrude circles Mirror
+    faceSelMirror = Selection.Create(resultCircleSurfMirror.GetCreated[IDesignFace]())
+    faceSelInnerMirror = Selection.Create(resultInnerCircleSurfMirror.GetCreated[IDesignFace]())
+    trajectoriesMirror = Selection.Create(resultLine1Mirror.GetCreated[IDesignCurve]()[0],resultLine2Mirror.GetCreated[IDesignCurve]()[0],resultTorusLineMirror.GetCreated[IDesignCurve]()[0])
+    options = SweepCommandOptions()
+    options.ExtrudeType = ExtrudeType.ForceIndependent
+    options.Select = True
+    resultSweepMirror = Sweep.Execute(faceSelMirror, trajectoriesMirror, options, None)
+    resultSweepInnerMirror = Sweep.Execute(faceSelInnerMirror, trajectoriesMirror, options, None)
+    Delete.Execute(trajectoriesMirror)
+   
+    extrudedBodyMirror = resultSweepMirror.GetCreated[IDesignBody]()[0]
+    extrudedBodyInnerMirror = resultSweepInnerMirror.GetCreated[IDesignBody]()[0]
+    pierce_base(baseBody, extrudedBodyInnerMirror)
+    pierce_base(baseBody, extrudedBodyMirror)
+   # remove intersection
+    remove_pipe_intersection(extrudedBodyMirror, extrudedBodyInnerMirror)
+    
+    selExtrudedBodyMirror = Selection.Create(extrudedBodyMirror)
+    selExtrudedBodyInnerMirror = Selection.Create(extrudedBodyInnerMirror)
+    ComponentHelper.MoveBodiesToComponent(selExtrudedBodyMirror,  compPipes, False)
+    ComponentHelper.MoveBodiesToComponent(selExtrudedBodyInnerMirror,  compWater, False)
     
