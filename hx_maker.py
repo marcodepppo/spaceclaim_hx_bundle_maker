@@ -7,8 +7,8 @@ import sys
 
 #parameters
 
-#Ntubes = 8466
-Ntubes = 10
+Ntubes = 8466
+#Ntubes = 30
 OD = 9.58 #mm
 tubeTks = 0.89 #mm 
 straightLen = 2700 #mm
@@ -16,7 +16,7 @@ pitch = 11.98 #mm
 passPlateTcks = 6.5 #mm
 centerPlaneDist = passPlateTcks + pitch #can be adjusted
 shellRadius = 870 #mm
-radiusLimit = 100 #mm
+radiusLimit = 700 #mm
 
 pipeFolderName = "HX_BUNDLE_PIPES"
 waterFolderName = "HX_BUNDLE_WATER"
@@ -76,7 +76,43 @@ def remove_pipe_intersection(pipeExt, pipeInn):
         Delete.Execute(delSel)
         return
     
- 
+
+def createTube(startCoords, endCoords,centerTorusCoords,endCoords2,startCoords2,diameter):
+    
+    #define points
+    startPoint = Point.Create(*startCoords)
+    endPoint = Point.Create(*endCoords)
+    centerTorusPoint = Point.Create(*centerTorusCoords)
+    startPoint2 = Point.Create(*startCoords2)
+    endPoint2 = Point.Create(*endCoords2)
+    #define lines
+    resultLine1 = SketchLine.Create(startPoint, endPoint)
+    resultLine2 = SketchLine.Create(startPoint2, endPoint2)
+    senseClockWise = True
+    resultTorusLine = SketchArc.Create3PointArc(endPoint2, endPoint,centerTorusPoint)
+    #create circles
+    sectionPlane = Plane.Create(Frame.Create(startPoint, 
+    -Direction.DirZ, 
+    Direction.DirY))
+    resultCircleLarge = SketchCircle.Create(startPoint,diameter, sectionPlane)
+    #fill circles
+    planeSel = Selection.Create(resultCircleLarge.GetCreated[IDesignCurve]())
+    secondarySelection = Selection.Empty()
+    options = FillOptions()
+    resultCirclSurf = Fill.Execute(planeSel, secondarySelection, options, FillMode.ThreeD, None)
+    Delete.Execute(planeSel)
+    #extrude circles
+    faceSel = Selection.Create(resultCirclSurf.GetCreated[IDesignFace]())
+    trajectories = Selection.Create(resultLine1.GetCreated[IDesignCurve]()[0],resultLine2.GetCreated[IDesignCurve]()[0],resultTorusLine.GetCreated[IDesignCurve]()[0])
+    options = SweepCommandOptions()
+    options.ExtrudeType = ExtrudeType.ForceIndependent
+    options.Select = True
+    resultSweep = Sweep.Execute(faceSel, trajectories, options, None)
+    Delete.Execute(trajectories)
+    extrudedBody = resultSweep.GetCreated[IDesignBody]()[0]
+    
+    return extrudedBody
+
 
 
 
@@ -111,20 +147,28 @@ dy = (pitch*0.001) * math.sin(math.radians(30))
 print(dy)
 iCounter = 0
 jCounter = 0
+
+extrudedBodyList = []
+extrudedBodyInnerList = []
+
 for i in range(Ntubes/2):
+    if (i*2) % 100 == 0:
+        print "i = ", 2*i
     yCoord = jCounter * dy + (centerPlaneDist *0.001)
     if jCounter % 2 == 0:
         xCoord = iCounter * dx + dx/2
         xCoordMirror = iCounter * dx + dx/2
     else:
-        xCoord = iCounter * dx + 0.5*(pitch*0.001) + dx/2
-        xCoordMirror = iCounter * dx - 0.5*(pitch*0.001) + dx/2
-    
+        #xCoord = iCounter * dx + 0.5*(pitch*0.001) + dx/2
+        #xCoordMirror = iCounter * dx - 0.5*(pitch*0.001) + dx/2
+        xCoord = iCounter * dx + 0.5*(dx) + dx/2
+        xCoordMirror = iCounter * dx - 0.5*(dx) + dx/2
     radiusCoord = (xCoord**2 + yCoord**2)**0.5
     
     if radiusCoord > (radiusLimit*0.001):
         jCounter += 1
         iCounter = 0
+        continue
     else:
         iCounter += 1
     
@@ -136,59 +180,19 @@ for i in range(Ntubes/2):
     endCoords2 = [baseCenter.X - (straightLen*0.001), baseCenter.Y - yCoord, baseCenter.Z + xCoord]
     startCoords2 = [baseCenter.X, baseCenter.Y - yCoord, baseCenter.Z + xCoord]
     
-    #define points
-    startPoint = Point.Create(*startCoords)
-    endPoint = Point.Create(*endCoords)
-    centerTorusPoint = Point.Create(*centerTorusCoords)
-    startPoint2 = Point.Create(*startCoords2)
-    endPoint2 = Point.Create(*endCoords2)
-    
-    #define lines
-    resultLine1 = SketchLine.Create(startPoint, endPoint)
-    resultLine2 = SketchLine.Create(startPoint2, endPoint2)
-    senseClockWise = True
-    resultTorusLine = SketchArc.Create3PointArc(endPoint2, endPoint,centerTorusPoint)
-    
-    #create circles
-    sectionPlane = Plane.Create(Frame.Create(startPoint, 
-    -Direction.DirZ, 
-    Direction.DirY))
-    resultCircleLarge = SketchCircle.Create(startPoint,(OD*0.001/2), sectionPlane)
-    resultCircleInner = SketchCircle.Create(startPoint,(OD*0.001/2 - tubeTks*0.001), sectionPlane)
-    
-    #fill circles
-    planeSel = Selection.Create(resultCircleLarge.GetCreated[IDesignCurve]())
-    planeSelInner = Selection.Create(resultCircleInner.GetCreated[IDesignCurve]())
-    secondarySelection = Selection.Empty()
-    options = FillOptions()
-    resultCirclSurf = Fill.Execute(planeSel, secondarySelection, options, FillMode.ThreeD, None)
-    resultInnerCirclSurf = Fill.Execute(planeSelInner, secondarySelection, options, FillMode.ThreeD, None)
-    Delete.Execute(planeSel)
-    Delete.Execute(planeSelInner)
-    
-    #extrude circles
-    faceSel = Selection.Create(resultCirclSurf.GetCreated[IDesignFace]())
-    faceSelInner = Selection.Create(resultInnerCirclSurf.GetCreated[IDesignFace]())
-    trajectories = Selection.Create(resultLine1.GetCreated[IDesignCurve]()[0],resultLine2.GetCreated[IDesignCurve]()[0],resultTorusLine.GetCreated[IDesignCurve]()[0])
-    options = SweepCommandOptions()
-    options.ExtrudeType = ExtrudeType.ForceIndependent
-    options.Select = True
-    resultSweep = Sweep.Execute(faceSel, trajectories, options, None)
-    resultSweepInner = Sweep.Execute(faceSelInner, trajectories, options, None)
-    Delete.Execute(trajectories)
-    
+        
+    extrudedBody = createTube(startCoords, endCoords,centerTorusCoords,endCoords2,startCoords2,OD*0.001/2)
+    extrudedBodyInner = createTube(startCoords, endCoords,centerTorusCoords,endCoords2,startCoords2,(OD*0.001/2 - tubeTks*0.001))
     #pierce base
-    extrudedBody = resultSweep.GetCreated[IDesignBody]()[0]
-    extrudedBodyInner = resultSweepInner.GetCreated[IDesignBody]()[0]
+
     pierce_base(baseBody, extrudedBodyInner)
     pierce_base(baseBody, extrudedBody)
     
     # remove intersection
     remove_pipe_intersection(extrudedBody, extrudedBodyInner)
-    selExtrudedBody = Selection.Create(extrudedBody)
-    selExtrudedBodyInner = Selection.Create(extrudedBodyInner)
-    ComponentHelper.MoveBodiesToComponent(selExtrudedBody,  compPipes, False)
-    ComponentHelper.MoveBodiesToComponent(selExtrudedBodyInner,  compWater, False)
+    extrudedBodyList.append(extrudedBody)
+    extrudedBodyInnerList.append(extrudedBodyInner)
+
     
     
    ###### MIRROR ######
@@ -198,54 +202,25 @@ for i in range(Ntubes/2):
     centerTorusCoordsMirror = [baseCenter.X - (straightLen*0.001) - yCoord, baseCenter.Y , baseCenter.Z - xCoordMirror]
     endCoords2Mirror = [baseCenter.X - (straightLen*0.001), baseCenter.Y - yCoord, baseCenter.Z - xCoordMirror]
     startCoords2Mirror = [baseCenter.X, baseCenter.Y - yCoord, baseCenter.Z - xCoordMirror]
-   
-   #define points Mirror
-    startPointMirror = Point.Create(*startCoordsMirror)
-    endPointMirror = Point.Create(*endCoordsMirror)
-    centerTorusPointMirror = Point.Create(*centerTorusCoordsMirror)
-    startPoint2Mirror = Point.Create(*startCoords2Mirror)
-    endPoint2Mirror = Point.Create(*endCoords2Mirror)
-   
-   #define lines Mirror
-    resultLine1Mirror = SketchLine.Create(startPointMirror, endPointMirror)
-    resultLine2Mirror = SketchLine.Create(startPoint2Mirror, endPoint2Mirror)
-    senseClockWise = True
-    resultTorusLineMirror = SketchArc.Create3PointArc(endPoint2Mirror, endPointMirror,centerTorusPointMirror)
-   
-   #create circles Mirror
-    resultCircleLargeMirror = SketchCircle.Create(startPointMirror,(OD*0.001/2), sectionPlane) 
-    resultCircleInnerMirror = SketchCircle.Create(startPointMirror,(OD*0.001/2 - tubeTks*0.001), sectionPlane) 
-   
-   #fill circles Mirror
-    planeSelMirror = Selection.Create(resultCircleLargeMirror.GetCreated[IDesignCurve]())
-    planeSelInnerMirror = Selection.Create(resultCircleInnerMirror.GetCreated[IDesignCurve]())
-    secondarySelection = Selection.Empty()
-    options = FillOptions()
-    resultCircleSurfMirror = Fill.Execute(planeSelMirror, secondarySelection, options, FillMode.ThreeD, None)
-    resultInnerCircleSurfMirror = Fill.Execute(planeSelInnerMirror, secondarySelection, options, FillMode.ThreeD, None)
-    Delete.Execute(planeSelMirror)
-    Delete.Execute(planeSelInnerMirror)
-   
-   #extrude circles Mirror
-    faceSelMirror = Selection.Create(resultCircleSurfMirror.GetCreated[IDesignFace]())
-    faceSelInnerMirror = Selection.Create(resultInnerCircleSurfMirror.GetCreated[IDesignFace]())
-    trajectoriesMirror = Selection.Create(resultLine1Mirror.GetCreated[IDesignCurve]()[0],resultLine2Mirror.GetCreated[IDesignCurve]()[0],resultTorusLineMirror.GetCreated[IDesignCurve]()[0])
-    options = SweepCommandOptions()
-    options.ExtrudeType = ExtrudeType.ForceIndependent
-    options.Select = True
-    resultSweepMirror = Sweep.Execute(faceSelMirror, trajectoriesMirror, options, None)
-    resultSweepInnerMirror = Sweep.Execute(faceSelInnerMirror, trajectoriesMirror, options, None)
-    Delete.Execute(trajectoriesMirror)
-   
-    extrudedBodyMirror = resultSweepMirror.GetCreated[IDesignBody]()[0]
-    extrudedBodyInnerMirror = resultSweepInnerMirror.GetCreated[IDesignBody]()[0]
+  
+
+    extrudedBodyMirror = createTube(startCoordsMirror, endCoordsMirror,centerTorusCoordsMirror,endCoords2Mirror,startCoords2Mirror,OD*0.001/2)
+    extrudedBodyInnerMirror = createTube(startCoordsMirror, endCoordsMirror,centerTorusCoords,endCoords2Mirror,startCoords2Mirror,(OD*0.001/2 - tubeTks*0.001))
+       
     pierce_base(baseBody, extrudedBodyInnerMirror)
     pierce_base(baseBody, extrudedBodyMirror)
    # remove intersection
     remove_pipe_intersection(extrudedBodyMirror, extrudedBodyInnerMirror)
     
-    selExtrudedBodyMirror = Selection.Create(extrudedBodyMirror)
-    selExtrudedBodyInnerMirror = Selection.Create(extrudedBodyInnerMirror)
-    ComponentHelper.MoveBodiesToComponent(selExtrudedBodyMirror,  compPipes, False)
-    ComponentHelper.MoveBodiesToComponent(selExtrudedBodyInnerMirror,  compWater, False)
+    extrudedBodyList.append(extrudedBodyMirror)
+    extrudedBodyInnerList.append(extrudedBodyInnerMirror)
+
+    
+selExtrudedBody = Selection.Create(extrudedBodyList)
+selExtrudedBodyInner = Selection.Create(extrudedBodyInnerList)
+ComponentHelper.MoveBodiesToComponent(selExtrudedBody,  compPipes, False)
+ComponentHelper.MoveBodiesToComponent(selExtrudedBodyInner,  compWater, False)
+    
+    
+    
     
